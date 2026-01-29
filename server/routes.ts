@@ -16,19 +16,23 @@ export async function registerRoutes(
   app.use("/files", express.static(filesDir));
 
   async function syncFiles() {
-    const dbFiles = await storage.getFiles();
-    const diskFiles = fs.readdirSync(filesDir);
-    for (const filename of diskFiles) {
-      if (filename.startsWith('.')) continue;
-      if (!dbFiles.find(f => f.filename === filename)) {
-        const stats = fs.statSync(path.join(filesDir, filename));
-        await storage.createFile({
-          filename,
-          path: `/files/${filename}`,
-          size: stats.size,
-          description: ""
-        });
+    try {
+      const dbFiles = await storage.getFiles();
+      const diskFiles = fs.readdirSync(filesDir);
+      for (const filename of diskFiles) {
+        if (filename.startsWith('.')) continue;
+        if (!dbFiles.find(f => f.filename === filename)) {
+          const stats = fs.statSync(path.join(filesDir, filename));
+          await storage.createFile({
+            filename,
+            path: `/files/${filename}`,
+            size: stats.size,
+            description: ""
+          });
+        }
       }
+    } catch (err) {
+      console.error("Database sync failed:", err.message);
     }
   }
   
