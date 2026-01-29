@@ -10,102 +10,44 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Serve files from the 'files' directory
   const filesDir = path.join(process.cwd(), "files");
-  
-  // Ensure directory exists
-  if (!fs.existsSync(filesDir)){
-      fs.mkdirSync(filesDir);
-  }
+  if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir);
 
   app.use("/files", express.static(filesDir));
 
-  // Sync files from disk to DB (simple seed)
   async function syncFiles() {
     const dbFiles = await storage.getFiles();
     const diskFiles = fs.readdirSync(filesDir);
-
     for (const filename of diskFiles) {
-      if (filename.startsWith('.')) continue; // skip hidden files
-      
-      const exists = dbFiles.find(f => f.filename === filename);
-      if (!exists) {
+      if (filename.startsWith('.')) continue;
+      if (!dbFiles.find(f => f.filename === filename)) {
         const stats = fs.statSync(path.join(filesDir, filename));
         await storage.createFile({
           filename,
           path: `/files/${filename}`,
           size: stats.size,
-          description: "Auto-detected file"
+          description: ""
         });
       }
     }
   }
   
-  // Run initial sync
   syncFiles().catch(console.error);
 
-  // API Routes
   app.get(api.files.list.path, async (req, res) => {
-    // Re-sync on listing to catch new files
     await syncFiles();
-    const files = await storage.getFiles();
-    res.json(files);
+    res.json(await storage.getFiles());
   });
 
-  app.get(api.files.get.path, async (req, res) => {
-    const file = await storage.getFile(Number(req.params.id));
-    if (!file) {
-      return res.status(404).json({ message: "File not found" });
-    }
-    res.json(file);
-  });
-
-  // Lite / No-JS Route
-  app.get("/lite", async (req, res) => {
+  app.get("/", async (req, res) => {
     await syncFiles();
     const files = await storage.getFiles();
-    
-    const fileListHtml = files.map(f => `
-      <div style="border-bottom: 1px solid #ccc; padding: 10px 0;">
-        <a href="${f.path}" style="font-size: 1.2em; font-weight: bold; text-decoration: none; color: #000;">${f.filename}</a>
-        <div style="color: #666; font-size: 0.9em;">
-          Size: ${Math.round(f.size / 1024)} KB<br/>
-          ${f.description || ''}
-        </div>
-        <a href="${f.path}" style="display: inline-block; margin-top: 5px; padding: 5px 10px; background: #eee; text-decoration: none; color: #333; border: 1px solid #ccc;">Download</a>
-      </div>
-    `).join('');
-
-    const html = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Files (Lite)</title>
-        <style>
-          body { font-family: monospace; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.5; }
-          h1 { border-bottom: 2px solid #000; }
-          .footer { margin-top: 30px; border-top: 1px solid #000; padding-top: 10px; font-size: 0.8em; }
-        </style>
-      </head>
-      <body>
-        <h1>File Downloads</h1>
-        <p>Lite version for older devices.</p>
-        
-        <div class="file-list">
-          ${fileListHtml}
-        </div>
-
-        <div class="footer">
-          <p>Served from Docker container.</p>
-          <a href="/">Switch to Modern View</a>
-        </div>
-      </body>
-      </html>
-    `;
-    
-    res.send(html);
+    const list = files.map(f => `<li><a href="${f.path}">${f.filename}</a> (${Math.round(f.size/1024)}KB)</li>`).join('');
+    res.send(`
+      <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+      <style>body{font-family:sans-serif;padding:10px;margin:0}a{display:inline-block;padding:5px 0}li{margin-bottom:10px}</style>
+      </head><body><h1>Files</h1><ul>${list}</ul></body></html>
+    `);
   });
 
   return httpServer;
