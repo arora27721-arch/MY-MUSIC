@@ -46,23 +46,26 @@ export async function registerRoutes(
       <div style="margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
         <strong style="font-size: 1.1em;">${f.filename}</strong><br>
         <span style="color: #666; font-size: 0.9em;">Size: ${Math.round(f.size/1024)}KB</span><br>
-        <a href="${f.path}" style="display: inline-block; background: #000; color: #fff; padding: 10px 20px; text-decoration: none; margin-top: 5px; border-radius: 4px; font-weight: bold;">DOWNLOAD</a>
+        <form action="${f.path}" method="GET" style="margin: 0;">
+          <input type="submit" value="DOWNLOAD" style="display: inline-block; background: #000; color: #fff; padding: 10px 20px; border: none; font-weight: bold; width: 100%; max-width: 200px; -webkit-appearance: none; cursor: pointer;">
+        </form>
       </div>
     `).join('');
     res.send(`
-      <!DOCTYPE html>
-      <html>
+      <!DOCTYPE html PUBLIC "-//WAPFORUM//DTD XHTML Mobile 1.0//EN" "http://www.wapforum.org/DTD/xhtml-mobile10.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml">
       <head>
-        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>Download Center</title>
-        <style>
-          body { font-family: sans-serif; padding: 15px; margin: 0; background: #fff; color: #000; }
-          h1 { font-size: 1.5em; border-bottom: 2px solid #000; padding-bottom: 5px; }
+        <style type="text/css">
+          body { font-family: sans-serif; padding: 10px; margin: 0; background: #fff; color: #000; }
+          h1 { font-size: 1.3em; border-bottom: 2px solid #000; padding-bottom: 5px; margin: 0 0 10px 0; }
         </style>
       </head>
       <body>
         <h1>Files</h1>
-        <div style="margin-top: 15px;">
+        <div style="margin-top: 10px;">
           ${list || '<p>No files available yet.</p>'}
         </div>
       </body>
